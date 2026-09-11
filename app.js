@@ -250,8 +250,7 @@ function showView(name) {
   if (name === "home") { renderProducts(); renderCompanyCard(); updateStatus(); }
   if (name === "new") {
     $("inputBudgetCurrency").value = baseCurrency();
-    $("inputBudgetSearch").value = "";
-    renderBudgetProducts("");
+    renderBudgetItems();
     $("inputFolio").value = autoFolio();
   }
   if (name === "history") renderHistory();
@@ -289,18 +288,30 @@ function renderProducts() {
   }
 
   box.innerHTML = "";
-  filtered.forEach(p => {
+  filtered.forEach((p, i) => {
     const div = document.createElement("div");
     div.className = "row";
     const sub = [p.code && ("Cód: " + p.code), p.marca && ("Marca: " + p.marca), p.stock && ("Stock: " + p.stock)]
       .filter(Boolean)
       .join(" · ");
     div.innerHTML =
-      `<div><strong>${esc(p.name)}</strong>` +
+      `<div class="row-info"><strong>${esc(p.name)}</strong>` +
       (sub ? `<br><small>${esc(sub)}</small>` : "") +
-      `</div><div class="price">${money(prodPrice(p))}</div>`;
+      `</div><div class="row-side"><div class="price">${money(prodPrice(p))}</div>` +
+      `<button type="button" class="add-btn${alreadyAdded(p) ? " added" : ""}" title="Agregar al presupuesto">${alreadyAdded(p) ? "✓" : "＋"}</button></div>`;
+    const addBtn = div.querySelector(".add-btn");
+    addBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      addBudgetItem(p, 1);
+      addBtn.textContent = "✓";
+      addBtn.classList.add("added");
+    });
     box.appendChild(div);
   });
+}
+
+function alreadyAdded(p) {
+  return budgetItems.some(i => i.data.name.toLowerCase() === p.name.toLowerCase());
 }
 
 async function loadProducts() {
@@ -308,87 +319,63 @@ async function loadProducts() {
     const rows = await fetchSheet();
     products = extractProducts(rows);
     renderProducts();
-    renderBudgetProducts($("inputBudgetSearch") ? $("inputBudgetSearch").value : "");
     setBadge("● En Línea", "green");
   } catch (e) {
     products = [];
     renderProducts();
-    renderBudgetProducts("");
     setBadge("● Sin conexión", "red");
   }
 }
 
-function renderBudgetProducts(filter) {
-  const box = $("budgetProductList");
-  if (!box) return;
-  const cur = budgetCurrency();
-  const q = normalizeTxt(filter || "");
-  const list = q
-    ? products.filter(p =>
-        normalizeTxt(p.name).includes(q) ||
-        normalizeTxt(p.code).includes(q) ||
-        normalizeTxt(p.marca).includes(q))
-    : products;
-
-  if (products.length === 0) {
-    box.innerHTML = '<p class="empty">Carga el inventario en Inicio para agregar productos.</p>';
-    return;
-  }
-  if (list.length === 0) {
-    box.innerHTML = `<p class="empty">Sin resultados para “${esc(filter || "")}”.</p>`;
-    return;
-  }
-
-  box.innerHTML = "";
-  list.forEach(p => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "row pick-item";
-    const sub = [p.code && ("Cód: " + p.code), p.marca && ("Marca: " + p.marca), p.stock && ("Stock: " + p.stock)]
-      .filter(Boolean)
-      .join(" · ");
-    btn.innerHTML =
-      `<div><strong>${esc(p.name)}</strong>` +
-      (sub ? `<br><small>${esc(sub)}</small>` : "") +
-      `</div><div class="price">${money(prodPrice(p, cur), cur)}</div>`;
-    btn.addEventListener("click", () => addBudgetItem(p.name, $("inputQty").value, prodPrice(p, cur)));
-    box.appendChild(btn);
-  });
+function itemPrice(it) {
+  return prodPrice(it.data, budgetCurrency());
 }
 
-function addBudgetItem(name, qty, price) {
-  if (!name) { toast("Escribe el nombre del producto."); return; }
+function addBudgetItem(data, qty) {
+  if (!data || !data.name) { toast("Selecciona un producto."); return; }
   qty = Number(qty);
-  price = Number(price);
-  if (!(qty > 0) || !(price >= 0)) { toast("Revisa cantidad y precio."); return; }
-  const existing = budgetItems.find(i => i.name.toLowerCase() === name.toLowerCase() && i.price === price);
+  if (!(qty > 0)) { toast("Revisa la cantidad."); return; }
+  const existing = budgetItems.find(i => i.data.name.toLowerCase() === data.name.toLowerCase());
   if (existing) existing.qty += qty;
-  else budgetItems.push({ name, qty, price });
+  else budgetItems.push({ data, qty });
   renderBudgetItems();
+  toast("Agregado ✓ " + data.name.slice(0, 24));
 }
 
 function renderBudgetItems() {
   const tbody = $("itemsBody");
   tbody.innerHTML = "";
   budgetItems.forEach((it, idx) => {
+    const price = itemPrice(it);
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${esc(it.name)}</td>
-      <td><input type="number" min="0" step="any" value="${it.qty}" class="qty-in" data-idx="${idx}"></td>
-      <td>${budgetMoney(it.price)}</td>
-      <td class="sub">${budgetMoney(it.qty * it.price)}</td>
-      <td><button class="link-del" data-idx="${idx}">✕</button></td>`;
+      <td>${esc(it.data.name)}</td>
+      <td>
+        <div class="qty-box">
+          <button type="button" class="qty-btn" data-op="dec" data-idx="${idx}">−</button>
+          <input type="number" min="0" step="any" value="${it.qty}" class="qty-in" data-idx="${idx}">
+          <button type="button" class="qty-btn" data-op="inc" data-idx="${idx}">＋</button>
+        </div>
+      </td>
+      <td>${budgetMoney(price)}</td>
+      <td class="sub">${budgetMoney(it.qty * price)}</td>
+      <td><button type="button" class="link-del" data-idx="${idx}">✕</button></td>`;
     tbody.appendChild(tr);
   });
   $("itemsCount").textContent = budgetItems.length ? `· ${budgetItems.length}` : "";
   $("itemsEmpty").style.display = budgetItems.length ? "none" : "block";
   $("itemsTable").style.display = budgetItems.length ? "" : "none";
+  const badge = $("cartBadge");
+  if (badge) {
+    const n = budgetItems.reduce((s, it) => s + it.qty, 0);
+    badge.textContent = n;
+    badge.classList.toggle("hidden", n === 0);
+  }
   updateTotal();
-  renderBudgetProducts($("inputBudgetSearch").value);
 }
 
 function updateTotal() {
-  const total = budgetItems.reduce((sum, i) => sum + i.qty * i.price, 0);
+  const total = budgetItems.reduce((sum, i) => sum + i.qty * itemPrice(i), 0);
   $("totalAmount").textContent = budgetMoney(total);
 }
 
@@ -431,7 +418,9 @@ function buildBudget(entry) {
 }
 
 function currentBudget() {
-  const items = budgetItems.filter(i => i.qty > 0 && i.price >= 0);
+  const items = budgetItems
+    .filter(i => i.qty > 0)
+    .map(i => ({ name: i.data.name, qty: i.qty, price: itemPrice(i) }));
   const total = items.reduce((sum, i) => sum + i.qty * i.price, 0);
   return {
     folio: $("inputFolio").value.trim() || autoFolio(),
@@ -560,18 +549,15 @@ function init() {
   });
 
   $("inputBudgetCurrency").addEventListener("change", () => {
-    renderBudgetProducts($("inputBudgetSearch").value);
     renderBudgetItems();
-  });
-
-  $("inputBudgetSearch").addEventListener("input", (e) => {
-    renderBudgetProducts(e.target.value);
   });
 
   $("itemsBody").addEventListener("change", (e) => {
     if (e.target.classList.contains("qty-in")) {
       const idx = Number(e.target.dataset.idx);
-      budgetItems[idx].qty = Number(e.target.value) || 0;
+      const v = Number(e.target.value) || 0;
+      if (v <= 0) budgetItems.splice(idx, 1);
+      else budgetItems[idx].qty = v;
       renderBudgetItems();
     }
   });
@@ -579,6 +565,16 @@ function init() {
   $("itemsBody").addEventListener("click", (e) => {
     if (e.target.classList.contains("link-del")) {
       budgetItems.splice(Number(e.target.dataset.idx), 1);
+      renderBudgetItems();
+    }
+    if (e.target.classList.contains("qty-btn")) {
+      const idx = Number(e.target.dataset.idx);
+      const op = e.target.dataset.op;
+      const it = budgetItems[idx];
+      if (!it) return;
+      const v = op === "inc" ? it.qty + 1 : it.qty - 1;
+      if (v <= 0) budgetItems.splice(idx, 1);
+      else budgetItems[idx].qty = v;
       renderBudgetItems();
     }
   });
@@ -623,7 +619,6 @@ function init() {
     updateStatus();
     renderCompanyCard();
     renderProducts();
-    renderBudgetProducts($("inputBudgetSearch").value);
   });
 
   $("btnCheck").addEventListener("click", async () => {

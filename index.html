@@ -57,17 +57,8 @@
         </select>
       </div>
 
-      <h3>Agregar producto</h3>
-      <div class="search">
-        <input id="inputBudgetSearch" type="search" placeholder="Buscar producto del inventario…" autocomplete="off">
-      </div>
-      <div class="field">
-        <label for="inputQty">Cantidad</label>
-        <input id="inputQty" type="number" min="1" step="any" value="1">
-      </div>
-      <div id="budgetProductList" class="list"></div>
-
-      <h3>Artículos <span id="itemsCount" class="count"></span></h3>
+      <h3>Artículos elegidos <span id="itemsCount" class="count"></span></h3>
+      <button class="back" data-goto="home">＋ Elegir más productos del inventario</button>
       <div id="itemsWrap">
         <table id="itemsTable">
           <thead>
@@ -156,6 +147,7 @@
 
   <button id="btnNewBudget" class="fab" aria-label="Nuevo presupuesto">
     <svg viewBox="0 0 24 24"><path d="M19,13h-6v6h-2v-6H5v-2h6V5h2v6h6V13z"/></svg>
+    <span id="cartBadge" class="fab-badge hidden">0</span>
   </button>
 
   <nav id="bottomNav">
