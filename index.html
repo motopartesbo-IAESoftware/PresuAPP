@@ -48,6 +48,15 @@
         <input id="inputClient" type="text" autocomplete="name" placeholder="Nombre del cliente">
       </div>
 
+      <div class="field">
+        <label for="inputBudgetCurrency">Moneda del presupuesto</label>
+        <select id="inputBudgetCurrency">
+          <option value="USD">Dólares — USD ($)</option>
+          <option value="COP">Pesos colombianos — COP ($)</option>
+          <option value="VES">Bolívares — VES (Bs)</option>
+        </select>
+      </div>
+
       <h3>Agregar producto</h3>
       <div class="pick">
         <select id="selProduct"></select>
@@ -120,12 +129,13 @@
       </div>
 
       <div class="field">
-        <label for="inputCurrency">Moneda de los presupuestos</label>
+        <label for="inputCurrency">Moneda base</label>
         <select id="inputCurrency">
           <option value="USD">Dólares — USD ($)</option>
           <option value="COP">Pesos colombianos — COP ($)</option>
-          <option value="BS">Bolívares — BS (Bs)</option>
+          <option value="VES">Bolívares — VES (Bs)</option>
         </select>
+        <p class="hint">Moneda por defecto para inventario y presupuestos</p>
       </div>
 
       <h3>Inventario (Google Sheets)</h3>
@@ -141,10 +151,11 @@
 
       <div class="note">
         <strong>Para conectar tu hoja:</strong><br>
-        1. Primera pestaña: primera fila = encabezados<br>
-        2. La app detecta automáticamente: <em>DESCRIPCIÓN</em>, <em>PRECIO</em> (USD),
+        1. Abre la pestaña <em>INVENTARIO</em> y copia su enlace<br>
+        2. Primera fila = encabezados<br>
+        3. La app detecta automáticamente: <em>DESCRIPCIÓN</em>, <em>PRECIO</em> (USD),
         <em>COP</em>, <em>BS</em> y <em>STOCK</em><br>
-        3. Compartir → “<strong>Cualquier persona con el enlace</strong>” (solo lectura)
+        4. Compartir → “<strong>Cualquier persona con el enlace</strong>” (solo lectura)
       </div>
     </section>
 

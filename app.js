@@ -3,11 +3,16 @@ const $ = (id) => document.getElementById(id);
 const CURRENCIES = {
   USD: { locale: "en-US", code: "USD", label: "Dólares (USD)" },
   COP: { locale: "es-CO", code: "COP", label: "Pesos colombianos (COP)" },
-  BS:  { locale: "es-VE", code: "VES", label: "Bolívares (BS)" }
+  VES: { locale: "es-VE", code: "VES", label: "Bolívares (VES)" }
 };
 
-function currentCurrency() {
+function baseCurrency() {
   return (loadSettings().currency || "USD");
+}
+
+function budgetCurrency() {
+  const el = $("inputBudgetCurrency");
+  return (el && el.value) || baseCurrency();
 }
 
 function fmtAmount(n, cur) {
@@ -21,14 +26,18 @@ function fmtAmount(n, cur) {
   }
 }
 
-function money(n) {
-  return fmtAmount(n, currentCurrency());
+function money(n, cur) {
+  return fmtAmount(n, cur || baseCurrency());
 }
 
-function prodPrice(p) {
-  const cur = currentCurrency();
+function budgetMoney(n) {
+  return money(n, budgetCurrency());
+}
+
+function prodPrice(p, cur) {
+  cur = cur || baseCurrency();
   if (cur === "COP") return p.cop;
-  if (cur === "BS") return p.bs;
+  if (cur === "VES") return p.bs;
   return p.usd;
 }
 
@@ -58,9 +67,43 @@ function normalizeTxt(s) {
   return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
+function parseNum(s) {
+  const str = String(s == null ? "" : s).trim().replace(/\s/g, "");
+  if (!str) return 0;
+  const negative = str.startsWith("-");
+  const digits = str.replace(/[^0-9.,]/g, "");
+  const lastComma = digits.lastIndexOf(",");
+  const lastDot = digits.lastIndexOf(".");
+  let sep;
+  if (lastComma < 0 && lastDot < 0) sep = "";
+  else if (lastComma > lastDot) sep = ",";
+  else sep = ".";
+  let n;
+  if (sep === "") {
+    n = parseInt(digits, 10) || 0;
+  } else if (sep === ",") {
+    const parts = digits.split(",");
+    const frac = parts.pop();
+    const whole = parts.join("").replace(/\./g, "");
+    n = parseFloat((whole || "0") + "." + (frac || "0"));
+  } else {
+    const parts = digits.split(".");
+    const frac = parts.pop();
+    const whole = parts.join("").replace(/,/g, "");
+    n = parseFloat((whole || "0") + "." + (frac || "0"));
+  }
+  return negative && n !== 0 ? -n : n;
+}
+
 function extractSheetId(url) {
   if (!url) return null;
   const m = String(url).match(/\/d\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : null;
+}
+
+function extractSheetGid(url) {
+  if (!url) return null;
+  const m = String(url).match(/[?&#]gid=(\d+)/);
   return m ? m[1] : null;
 }
 
@@ -95,7 +138,9 @@ async function fetchSheet(timeout = 15000) {
   const s = loadSettings();
   const id = extractSheetId(s.sheetsLink);
   if (!id) throw new Error("no-link");
-  const url = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv`;
+  const gid = extractSheetGid(s.sheetsLink);
+  let url = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv`;
+  if (gid) url += `&gid=${gid}`;
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeout);
   try {
@@ -123,10 +168,7 @@ function extractProducts(rows) {
   const copIdx = match(/^cop$/i);
   const bsIdx = match(/^bs$/i);
 
-  const parseN = (r, i) => {
-    if (i < 0 || i >= r.length) return 0;
-    return parseFloat(String(r[i]).replace(/[^0-9.\-]/g, "")) || 0;
-  };
+  const parseN = (r, i) => (i < 0 || i >= r.length ? 0 : parseNum(r[i]));
   const cell = (r, i) => (i >= 0 && i < r.length ? String(r[i]).trim() : "");
 
   return rows.slice(1)
@@ -206,7 +248,11 @@ function showView(name) {
     btn.classList.toggle("active", btn.dataset.goto === name);
   });
   if (name === "home") { renderProducts(); renderCompanyCard(); updateStatus(); }
-  if (name === "new") { fillProductPicker(); $("inputFolio").value = autoFolio(); }
+  if (name === "new") {
+    $("inputBudgetCurrency").value = baseCurrency();
+    fillProductPicker();
+    $("inputFolio").value = autoFolio();
+  }
   if (name === "history") renderHistory();
 }
 
@@ -272,10 +318,11 @@ async function loadProducts() {
 function fillProductPicker() {
   const sel = $("selProduct");
   sel.innerHTML = '<option value="">— Selecciona un producto —</option>';
+  const cur = budgetCurrency();
   products.forEach((p, i) => {
     const o = document.createElement("option");
     o.value = i;
-    o.textContent = `${p.name} — ${money(prodPrice(p))}` + (p.stock ? ` (stock: ${p.stock})` : "");
+    o.textContent = `${p.name} — ${money(prodPrice(p, cur), cur)}` + (p.stock ? ` (stock: ${p.stock})` : "");
     sel.appendChild(o);
   });
 }
@@ -299,8 +346,8 @@ function renderBudgetItems() {
     tr.innerHTML = `
       <td>${esc(it.name)}</td>
       <td><input type="number" min="0" step="any" value="${it.qty}" class="qty-in" data-idx="${idx}"></td>
-      <td>${money(it.price)}</td>
-      <td class="sub">${money(it.qty * it.price)}</td>
+      <td>${budgetMoney(it.price)}</td>
+      <td class="sub">${budgetMoney(it.qty * it.price)}</td>
       <td><button class="link-del" data-idx="${idx}">✕</button></td>`;
     tbody.appendChild(tr);
   });
@@ -313,12 +360,13 @@ function renderBudgetItems() {
 
 function updateTotal() {
   const total = budgetItems.reduce((sum, i) => sum + i.qty * i.price, 0);
-  $("totalAmount").textContent = money(total);
+  $("totalAmount").textContent = budgetMoney(total);
 }
 
 function buildBudget(entry) {
   const s = loadSettings();
   const dateStr = new Date().toLocaleDateString("es-MX");
+  const cur = (entry && entry.currency) || baseCurrency();
   const lines = [];
   if (s.companyName) {
     lines.push("══════════════════════════════");
@@ -335,16 +383,16 @@ function buildBudget(entry) {
   lines.push("Fecha: " + (entry.dateStr || dateStr));
   if (entry.client) lines.push("Cliente: " + entry.client);
   lines.push("");
-  lines.push("Precios en: " + (CURRENCIES[currentCurrency()]?.label || "USD"));
+  lines.push("Precios en: " + (CURRENCIES[cur]?.label || "USD"));
   lines.push("┌───────────────────────────────");
   lines.push("  DESCRIPCIÓN           CANT   IMPORTE");
   lines.push("├───────────────────────────────");
   (entry.items || []).forEach(i => {
     lines.push("  " + i.name);
-    lines.push(`  ${i.qty} x ${money(i.price)} = ${money(i.qty * i.price)}`);
+    lines.push(`  ${i.qty} x ${money(i.price, cur)} = ${money(i.qty * i.price, cur)}`);
   });
   lines.push("├───────────────────────────────");
-  lines.push("  TOTAL: " + money(entry.total));
+  lines.push("  TOTAL: " + money(entry.total, cur));
   lines.push("└───────────────────────────────");
   lines.push("");
   if (entry.conditions) { lines.push("Condiciones de pago:"); lines.push(entry.conditions); lines.push(""); }
@@ -361,6 +409,7 @@ function currentBudget() {
     client: $("inputClient").value.trim(),
     conditions: $("inputConditions").value.trim(),
     dateStr: new Date().toLocaleDateString("es-MX"),
+    currency: budgetCurrency(),
     items,
     total
   };
@@ -421,7 +470,7 @@ function renderHistory() {
         <br><small>${new Date(entry.date).toLocaleDateString("es-MX")}</small>
       </div>
       <div>
-        <div class="price" style="text-align:right">${money(entry.total)}</div>
+        <div class="price" style="text-align:right">${money(entry.total, entry.currency || baseCurrency())}</div>
         <div class="actions">
           <button class="btn tiny" data-action="view" data-id="${entry.id}">Ver</button>
           <button class="btn tiny" data-action="copy" data-id="${entry.id}">Copiar</button>
@@ -485,7 +534,12 @@ function init() {
     const idx = $("selProduct").value;
     if (idx === "") { toast("Selecciona un producto."); return; }
     const p = products[Number(idx)];
-    addBudgetItem(p.name, $("inputQty").value, prodPrice(p));
+    addBudgetItem(p.name, $("inputQty").value, prodPrice(p, budgetCurrency()));
+  });
+
+  $("inputBudgetCurrency").addEventListener("change", () => {
+    fillProductPicker();
+    renderBudgetItems();
   });
 
   $("btnManualAdd").addEventListener("click", () => {
