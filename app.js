@@ -1,12 +1,43 @@
 const $ = (id) => document.getElementById(id);
 
-const money = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
+const CURRENCIES = {
+  USD: { locale: "en-US", code: "USD", label: "Dólares (USD)" },
+  COP: { locale: "es-CO", code: "COP", label: "Pesos colombianos (COP)" },
+  BS:  { locale: "es-VE", code: "VES", label: "Bolívares (BS)" }
+};
+
+function currentCurrency() {
+  return (loadSettings().currency || "USD");
+}
+
+function fmtAmount(n, cur) {
+  const c = CURRENCIES[cur] || CURRENCIES.USD;
+  try {
+    return new Intl.NumberFormat(c.locale, {
+      style: "currency", currency: c.code, minimumFractionDigits: 2, maximumFractionDigits: 2
+    }).format(n);
+  } catch (e) {
+    return c.code + " " + n.toFixed(2);
+  }
+}
+
+function money(n) {
+  return fmtAmount(n, currentCurrency());
+}
+
+function prodPrice(p) {
+  const cur = currentCurrency();
+  if (cur === "COP") return p.cop;
+  if (cur === "BS") return p.bs;
+  return p.usd;
+}
 
 const SETTINGS_KEY = "presupuestos.settings";
 const HISTORY_KEY = "presupuestos.budgets";
 
 let products = [];
 let budgetItems = [];
+let searchQuery = "";
 
 function loadSettings() {
   try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; } catch (e) { return {}; }
@@ -21,6 +52,10 @@ function saveHistory(h) { localStorage.setItem(HISTORY_KEY, JSON.stringify(h.sli
 function esc(s) {
   return String(s).replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function normalizeTxt(s) {
+  return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
 function extractSheetId(url) {
@@ -73,20 +108,42 @@ async function fetchSheet(timeout = 15000) {
 function extractProducts(rows) {
   if (!rows || rows.length === 0) return [];
   const headers = rows[0].map(h => String(h).trim());
-  const match = (re) => headers.findIndex(h => re.test(h));
-  let nameIdx = match(/producto|nombre|articulo|descrip/i);
-  let priceIdx = match(/precio|valor|importe|unitario|p\s?u/i);
-  const stockIdx = match(/stock|existencia|cantidad|disponibl/i);
-  if (nameIdx < 0) nameIdx = 0;
-  if (priceIdx < 0) priceIdx = 1;
+  const norm = headers.map(h => h.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase());
+  const match = (re) => norm.findIndex(h => re.test(h));
+  const lastMatch = (re) => {
+    let idx = -1;
+    norm.forEach((h, i) => { if (re.test(h)) idx = i; });
+    return idx;
+  };
+  const nameIdx = match(/descrip|nombre|producto|articulo/i);
+  const codeIdx = match(/^cod/i);
+  const marcaIdx = match(/marca/i);
+  const stockIdx = match(/^stock$/i) >= 0 ? match(/^stock$/i) : match(/existencia|cantidad/i);
+  const usdIdx = lastMatch(/^precio$/i);
+  const copIdx = match(/^cop$/i);
+  const bsIdx = match(/^bs$/i);
+
+  const parseN = (r, i) => {
+    if (i < 0 || i >= r.length) return 0;
+    return parseFloat(String(r[i]).replace(/[^0-9.\-]/g, "")) || 0;
+  };
+  const cell = (r, i) => (i >= 0 && i < r.length ? String(r[i]).trim() : "");
+
   return rows.slice(1)
     .filter(r => r.length && r.join("").trim() !== "")
     .map(r => {
-      const name = String(r[nameIdx] != null ? r[nameIdx] : "").trim();
+      let name = cell(r, nameIdx);
+      if (!name) name = cell(r, codeIdx);
       if (!name) return null;
-      const price = parseFloat(String(r[priceIdx] != null ? r[priceIdx] : "").replace(/[^0-9.\-]/g, "")) || 0;
-      const stock = stockIdx >= 0 ? String(r[stockIdx] != null ? r[stockIdx] : "").trim() : "";
-      return { name, price, stock };
+      return {
+        name,
+        code: cell(r, codeIdx),
+        marca: cell(r, marcaIdx),
+        stock: cell(r, stockIdx),
+        usd: parseN(r, usdIdx),
+        cop: parseN(r, copIdx),
+        bs: parseN(r, bsIdx)
+      };
     })
     .filter(Boolean);
 }
@@ -167,15 +224,34 @@ function renderProducts() {
     hint.textContent = "";
     return;
   }
-  hint.textContent = products.length + " producto(s) cargados desde tu hoja.";
+  const q = normalizeTxt(searchQuery);
+  const filtered = q
+    ? products.filter(p =>
+        normalizeTxt(p.name).includes(q) ||
+        normalizeTxt(p.code).includes(q) ||
+        normalizeTxt(p.marca).includes(q))
+    : products;
+
+  hint.textContent = q
+    ? `${filtered.length} de ${products.length} producto(s) encontrados.`
+    : products.length + " producto(s) cargados desde tu hoja.";
+
+  if (filtered.length === 0) {
+    box.innerHTML = `<p class="empty">Sin resultados para “${esc(searchQuery)}”.</p>`;
+    return;
+  }
+
   box.innerHTML = "";
-  products.forEach(p => {
+  filtered.forEach(p => {
     const div = document.createElement("div");
     div.className = "row";
+    const sub = [p.code && ("Cód: " + p.code), p.marca && ("Marca: " + p.marca), p.stock && ("Stock: " + p.stock)]
+      .filter(Boolean)
+      .join(" · ");
     div.innerHTML =
       `<div><strong>${esc(p.name)}</strong>` +
-      (p.stock ? `<br><small>Stock: ${esc(p.stock)}</small>` : "") +
-      `</div><div class="price">${money.format(p.price)}</div>`;
+      (sub ? `<br><small>${esc(sub)}</small>` : "") +
+      `</div><div class="price">${money(prodPrice(p))}</div>`;
     box.appendChild(div);
   });
 }
@@ -199,7 +275,7 @@ function fillProductPicker() {
   products.forEach((p, i) => {
     const o = document.createElement("option");
     o.value = i;
-    o.textContent = `${p.name} (${money.format(p.price)})` + (p.stock ? ` stock: ${p.stock}` : "");
+    o.textContent = `${p.name} — ${money(prodPrice(p))}` + (p.stock ? ` (stock: ${p.stock})` : "");
     sel.appendChild(o);
   });
 }
@@ -223,8 +299,8 @@ function renderBudgetItems() {
     tr.innerHTML = `
       <td>${esc(it.name)}</td>
       <td><input type="number" min="0" step="any" value="${it.qty}" class="qty-in" data-idx="${idx}"></td>
-      <td>${money.format(it.price)}</td>
-      <td class="sub">${money.format(it.qty * it.price)}</td>
+      <td>${money(it.price)}</td>
+      <td class="sub">${money(it.qty * it.price)}</td>
       <td><button class="link-del" data-idx="${idx}">✕</button></td>`;
     tbody.appendChild(tr);
   });
@@ -237,7 +313,7 @@ function renderBudgetItems() {
 
 function updateTotal() {
   const total = budgetItems.reduce((sum, i) => sum + i.qty * i.price, 0);
-  $("totalAmount").textContent = money.format(total);
+  $("totalAmount").textContent = money(total);
 }
 
 function buildBudget(entry) {
@@ -253,21 +329,22 @@ function buildBudget(entry) {
     lines.push("══════════════════════════════");
     lines.push("");
   }
-  lines.push("      PRESUPUESTO");
+  lines.push("  PRESUPUESTO");
   lines.push("");
   lines.push("Folio: " + entry.folio);
   lines.push("Fecha: " + (entry.dateStr || dateStr));
   if (entry.client) lines.push("Cliente: " + entry.client);
   lines.push("");
+  lines.push("Precios en: " + (CURRENCIES[currentCurrency()]?.label || "USD"));
   lines.push("┌───────────────────────────────");
   lines.push("  DESCRIPCIÓN           CANT   IMPORTE");
   lines.push("├───────────────────────────────");
   (entry.items || []).forEach(i => {
     lines.push("  " + i.name);
-    lines.push(`  ${i.qty} x ${money.format(i.price)} = ${money.format(i.qty * i.price)}`);
+    lines.push(`  ${i.qty} x ${money(i.price)} = ${money(i.qty * i.price)}`);
   });
   lines.push("├───────────────────────────────");
-  lines.push("  TOTAL: " + money.format(entry.total));
+  lines.push("  TOTAL: " + money(entry.total));
   lines.push("└───────────────────────────────");
   lines.push("");
   if (entry.conditions) { lines.push("Condiciones de pago:"); lines.push(entry.conditions); lines.push(""); }
@@ -344,7 +421,7 @@ function renderHistory() {
         <br><small>${new Date(entry.date).toLocaleDateString("es-MX")}</small>
       </div>
       <div>
-        <div class="price" style="text-align:right">${money.format(entry.total)}</div>
+        <div class="price" style="text-align:right">${money(entry.total)}</div>
         <div class="actions">
           <button class="btn tiny" data-action="view" data-id="${entry.id}">Ver</button>
           <button class="btn tiny" data-action="copy" data-id="${entry.id}">Copiar</button>
@@ -386,6 +463,7 @@ function init() {
   $("inputAddress").value = s.address || "";
   $("inputWhatsapp").value = s.whatsapp || "";
   $("inputSheets").value = s.sheetsLink || "";
+  $("inputCurrency").value = s.currency || "USD";
 
   updateStatus();
   loadProducts();
@@ -398,11 +476,16 @@ function init() {
   $("btnNewBudget").addEventListener("click", () => showView("new"));
   $("btnRefresh").addEventListener("click", loadProducts);
 
+  $("inputSearch").addEventListener("input", (e) => {
+    searchQuery = e.target.value;
+    renderProducts();
+  });
+
   $("btnAddSelected").addEventListener("click", () => {
     const idx = $("selProduct").value;
     if (idx === "") { toast("Selecciona un producto."); return; }
     const p = products[Number(idx)];
-    addBudgetItem(p.name, $("inputQty").value, p.price);
+    addBudgetItem(p.name, $("inputQty").value, prodPrice(p));
   });
 
   $("btnManualAdd").addEventListener("click", () => {
@@ -454,15 +537,20 @@ function init() {
   });
 
   $("btnSaveSettings").addEventListener("click", () => {
+    const s = loadSettings();
     saveSettings({
+      ...s,
       companyName: $("inputCompany").value.trim(),
       address: $("inputAddress").value.trim(),
       whatsapp: $("inputWhatsapp").value.trim(),
-      sheetsLink: $("inputSheets").value.trim()
+      sheetsLink: $("inputSheets").value.trim(),
+      currency: $("inputCurrency").value || "USD"
     });
     toast("Datos guardados ✓");
     updateStatus();
     renderCompanyCard();
+    renderProducts();
+    fillProductPicker();
   });
 
   $("btnCheck").addEventListener("click", async () => {

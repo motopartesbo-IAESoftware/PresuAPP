@@ -111,6 +111,33 @@ h3 { font-size: 14.5px; font-weight: 700; margin: 20px 0 10px; color: var(--mute
   margin-top: 6px;
 }
 .section-head h2 { margin: 0; }
+.search { position: relative; margin: 12px 0 4px; }
+.search input {
+  width: 100%;
+  padding: 13px 44px 13px 16px;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  font-size: 15px;
+  background: var(--surface);
+  color: var(--text);
+  -webkit-appearance: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.search input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(21,101,192,.15);
+}
+.search::after {
+  content: "🔍";
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  opacity: .55;
+  pointer-events: none;
+}
 .icon-btn {
   border: none;
   background: var(--surface);
@@ -193,6 +220,7 @@ h3 { font-size: 14.5px; font-weight: 700; margin: 20px 0 10px; color: var(--mute
 }
 .field input,
 .field textarea,
+.field select,
 .pick input,
 .pick select,
 .manual input {
@@ -207,6 +235,7 @@ h3 { font-size: 14.5px; font-weight: 700; margin: 20px 0 10px; color: var(--mute
 }
 .field input:focus,
 .field textarea:focus,
+.field select:focus,
 .pick input:focus,
 .pick select:focus,
 .manual input:focus {

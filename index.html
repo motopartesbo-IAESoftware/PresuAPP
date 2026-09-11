@@ -27,6 +27,9 @@
         <h2>Inventario</h2>
         <button id="btnRefresh" class="icon-btn" title="Actualizar">↻</button>
       </div>
+      <div class="search">
+        <input id="inputSearch" type="search" placeholder="Buscar producto por descripción…" autocomplete="off">
+      </div>
       <p id="homeHint" class="hint"></p>
       <div id="productList" class="list"></div>
     </section>
@@ -116,6 +119,15 @@
         <input id="inputWhatsapp" type="tel" placeholder="5215512345678">
       </div>
 
+      <div class="field">
+        <label for="inputCurrency">Moneda de los presupuestos</label>
+        <select id="inputCurrency">
+          <option value="USD">Dólares — USD ($)</option>
+          <option value="COP">Pesos colombianos — COP ($)</option>
+          <option value="BS">Bolívares — BS (Bs)</option>
+        </select>
+      </div>
+
       <h3>Inventario (Google Sheets)</h3>
 
       <div class="field">
@@ -130,7 +142,8 @@
       <div class="note">
         <strong>Para conectar tu hoja:</strong><br>
         1. Primera pestaña: primera fila = encabezados<br>
-        2. Columnas: <em>Producto | Precio | Stock</em><br>
+        2. La app detecta automáticamente: <em>DESCRIPCIÓN</em>, <em>PRECIO</em> (USD),
+        <em>COP</em>, <em>BS</em> y <em>STOCK</em><br>
         3. Compartir → “<strong>Cualquier persona con el enlace</strong>” (solo lectura)
       </div>
     </section>
