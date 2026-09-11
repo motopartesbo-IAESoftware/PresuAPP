@@ -58,21 +58,14 @@
       </div>
 
       <h3>Agregar producto</h3>
-      <div class="pick">
-        <select id="selProduct"></select>
-        <input id="inputQty" type="number" min="1" step="any" value="1">
-        <button id="btnAddSelected" class="btn primary compact">＋</button>
+      <div class="search">
+        <input id="inputBudgetSearch" type="search" placeholder="Buscar producto del inventario…" autocomplete="off">
       </div>
-
-      <details class="manual-box">
-        <summary>O agregar manualmente</summary>
-        <div class="manual">
-          <input id="inputManualName" type="text" placeholder="Nombre del producto">
-          <input id="inputManualPrice" type="number" min="0" step="0.01" placeholder="Precio">
-          <input id="inputManualQty" type="number" min="1" step="any" value="1">
-          <button id="btnManualAdd" class="btn primary">Agregar manual</button>
-        </div>
-      </details>
+      <div class="field">
+        <label for="inputQty">Cantidad</label>
+        <input id="inputQty" type="number" min="1" step="any" value="1">
+      </div>
+      <div id="budgetProductList" class="list"></div>
 
       <h3>Artículos <span id="itemsCount" class="count"></span></h3>
       <div id="itemsWrap">
@@ -151,10 +144,10 @@
 
       <div class="note">
         <strong>Para conectar tu hoja:</strong><br>
-        1. Abre la pestaña <em>INVENTARIO</em> y copia su enlace<br>
-        2. Primera fila = encabezados<br>
-        3. La app detecta automáticamente: <em>DESCRIPCIÓN</em>, <em>PRECIO</em> (USD),
-        <em>COP</em>, <em>BS</em> y <em>STOCK</em><br>
+        1. Copia el enlace de tu hoja con la pestaña <em>INVENTARIO</em> abierta<br>
+        2. Primera fila de esa pestaña = encabezados<br>
+        3. La app detecta: <em>DESCRIPCIÓN</em>, <em>CÓDIGO</em>, <em>MARCA</em>,
+        <em>PRECIO</em> (USD), <em>COP</em>, <em>BS</em> y <em>STOCK</em><br>
         4. Compartir → “<strong>Cualquier persona con el enlace</strong>” (solo lectura)
       </div>
     </section>

@@ -139,7 +139,7 @@ async function fetchSheet(timeout = 15000) {
   const id = extractSheetId(s.sheetsLink);
   if (!id) throw new Error("no-link");
   const gid = extractSheetGid(s.sheetsLink);
-  let url = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv`;
+  let url = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv`;
   if (gid) url += `&gid=${gid}`;
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeout);
@@ -250,7 +250,8 @@ function showView(name) {
   if (name === "home") { renderProducts(); renderCompanyCard(); updateStatus(); }
   if (name === "new") {
     $("inputBudgetCurrency").value = baseCurrency();
-    fillProductPicker();
+    $("inputBudgetSearch").value = "";
+    renderBudgetProducts("");
     $("inputFolio").value = autoFolio();
   }
   if (name === "history") renderHistory();
@@ -307,23 +308,51 @@ async function loadProducts() {
     const rows = await fetchSheet();
     products = extractProducts(rows);
     renderProducts();
+    renderBudgetProducts($("inputBudgetSearch") ? $("inputBudgetSearch").value : "");
     setBadge("● En Línea", "green");
   } catch (e) {
     products = [];
     renderProducts();
+    renderBudgetProducts("");
     setBadge("● Sin conexión", "red");
   }
 }
 
-function fillProductPicker() {
-  const sel = $("selProduct");
-  sel.innerHTML = '<option value="">— Selecciona un producto —</option>';
+function renderBudgetProducts(filter) {
+  const box = $("budgetProductList");
+  if (!box) return;
   const cur = budgetCurrency();
-  products.forEach((p, i) => {
-    const o = document.createElement("option");
-    o.value = i;
-    o.textContent = `${p.name} — ${money(prodPrice(p, cur), cur)}` + (p.stock ? ` (stock: ${p.stock})` : "");
-    sel.appendChild(o);
+  const q = normalizeTxt(filter || "");
+  const list = q
+    ? products.filter(p =>
+        normalizeTxt(p.name).includes(q) ||
+        normalizeTxt(p.code).includes(q) ||
+        normalizeTxt(p.marca).includes(q))
+    : products;
+
+  if (products.length === 0) {
+    box.innerHTML = '<p class="empty">Carga el inventario en Inicio para agregar productos.</p>';
+    return;
+  }
+  if (list.length === 0) {
+    box.innerHTML = `<p class="empty">Sin resultados para “${esc(filter || "")}”.</p>`;
+    return;
+  }
+
+  box.innerHTML = "";
+  list.forEach(p => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "row pick-item";
+    const sub = [p.code && ("Cód: " + p.code), p.marca && ("Marca: " + p.marca), p.stock && ("Stock: " + p.stock)]
+      .filter(Boolean)
+      .join(" · ");
+    btn.innerHTML =
+      `<div><strong>${esc(p.name)}</strong>` +
+      (sub ? `<br><small>${esc(sub)}</small>` : "") +
+      `</div><div class="price">${money(prodPrice(p, cur), cur)}</div>`;
+    btn.addEventListener("click", () => addBudgetItem(p.name, $("inputQty").value, prodPrice(p, cur)));
+    box.appendChild(btn);
   });
 }
 
@@ -355,7 +384,7 @@ function renderBudgetItems() {
   $("itemsEmpty").style.display = budgetItems.length ? "none" : "block";
   $("itemsTable").style.display = budgetItems.length ? "" : "none";
   updateTotal();
-  fillProductPicker();
+  renderBudgetProducts($("inputBudgetSearch").value);
 }
 
 function updateTotal() {
@@ -530,23 +559,13 @@ function init() {
     renderProducts();
   });
 
-  $("btnAddSelected").addEventListener("click", () => {
-    const idx = $("selProduct").value;
-    if (idx === "") { toast("Selecciona un producto."); return; }
-    const p = products[Number(idx)];
-    addBudgetItem(p.name, $("inputQty").value, prodPrice(p, budgetCurrency()));
-  });
-
   $("inputBudgetCurrency").addEventListener("change", () => {
-    fillProductPicker();
+    renderBudgetProducts($("inputBudgetSearch").value);
     renderBudgetItems();
   });
 
-  $("btnManualAdd").addEventListener("click", () => {
-    addBudgetItem($("inputManualName").value.trim(),
-      $("inputManualQty").value, $("inputManualPrice").value);
-    $("inputManualName").value = "";
-    $("inputManualPrice").value = "";
+  $("inputBudgetSearch").addEventListener("input", (e) => {
+    renderBudgetProducts(e.target.value);
   });
 
   $("itemsBody").addEventListener("change", (e) => {
@@ -604,7 +623,7 @@ function init() {
     updateStatus();
     renderCompanyCard();
     renderProducts();
-    fillProductPicker();
+    renderBudgetProducts($("inputBudgetSearch").value);
   });
 
   $("btnCheck").addEventListener("click", async () => {

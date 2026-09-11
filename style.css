@@ -167,6 +167,17 @@ h3 { font-size: 14.5px; font-weight: 700; margin: 20px 0 10px; color: var(--mute
 .row:active { transform: scale(.985); }
 .row small { color: var(--muted); }
 .row .price { font-weight: 800; font-size: 15px; }
+.pick-item {
+  width: 100%;
+  text-align: left;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.pick-item small { color: var(--muted); }
+.pick-item:active { transform: scale(.985); }
 .actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px; }
 .empty { color: var(--muted); text-align: center; padding: 22px 0; font-size: 14px; }
 
