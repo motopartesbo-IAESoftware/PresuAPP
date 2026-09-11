@@ -134,20 +134,43 @@ function parseCSV(text) {
   return rows;
 }
 
+function looksLikeInventory(rows) {
+  if (!rows || rows.length === 0) return false;
+  const norm = rows[0].map(h => String(h).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim());
+  const desc = norm.some(h => /descrip|nombre|producto|articulo/.test(h));
+  const price = norm.some(h => /^precio$/i.test(h) || /^cop$/i.test(h) || /^bs$/i.test(h));
+  return desc && price;
+}
+
+function sheetCandidates(id, gid) {
+  const base = `https://docs.google.com/spreadsheets/d/${id}`;
+  const urls = [];
+  if (gid) urls.push(`${base}/export?format=csv&gid=${gid}`);
+  urls.push(`${base}/gviz/tq?tqx=out:csv&sheet=INVENTARIO`);
+  if (gid) urls.push(`${base}/gviz/tq?tqx=out:csv&gid=${gid}`);
+  urls.push(`${base}/export?format=csv`);
+  return urls;
+}
+
 async function fetchSheet(timeout = 15000) {
   const s = loadSettings();
   const id = extractSheetId(s.sheetsLink);
   if (!id) throw new Error("no-link");
   const gid = extractSheetGid(s.sheetsLink);
-  let url = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv`;
-  if (gid) url += `&gid=${gid}`;
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeout);
-  try {
-    const res = await fetch(url, { signal: ctrl.signal });
-    if (!res.ok) throw new Error("http:" + res.status);
-    return parseCSV(await res.text());
-  } finally { clearTimeout(t); }
+  const perTry = Math.max(4000, Math.floor(timeout / sheetCandidates(id, gid).length));
+  const urls = sheetCandidates(id, gid);
+  for (const url of urls) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), perTry);
+    try {
+      const res = await fetch(url, { signal: ctrl.signal });
+      if (!res.ok) continue;
+      const rows = parseCSV(await res.text());
+      if (looksLikeInventory(rows)) return rows;
+    } catch (e) { /* intenta con la siguiente */ }
+    finally { clearTimeout(t); }
+  }
+  throw new Error("no-inventario");
 }
 
 function extractProducts(rows) {
@@ -207,7 +230,8 @@ async function updateStatus() {
     await fetchSheet(8000);
     setBadge("● En Línea", "green");
   } catch (e) {
-    setBadge("● Sin conexión", "red");
+    if (e && e.message === "no-inventario") setBadge("⚠ Sin pestaña INVENTARIO", "red");
+    else setBadge("● Sin conexión", "red");
   }
 }
 
@@ -323,7 +347,15 @@ async function loadProducts() {
   } catch (e) {
     products = [];
     renderProducts();
-    setBadge("● Sin conexión", "red");
+    if (e && e.message === "no-inventario") {
+      setBadge("⚠ Sin pestaña INVENTARIO", "red");
+      const hint = $("homeHint");
+      if (hint) hint.textContent = "No encontré la pestaña INVENTARIO en tu hoja. Ve a Config y revisa el enlace.";
+    } else if (e && e.message === "no-link") {
+      setBadge("Configura Sheets", "grey");
+    } else {
+      setBadge("● Sin conexión", "red");
+    }
   }
 }
 
@@ -628,8 +660,16 @@ function init() {
       $("settingsMsg").textContent = "En Línea: tu hoja está conectada ✅";
       setBadge("● En Línea", "green");
     } catch (e) {
-      $("settingsMsg").textContent = "Sin conexión: revisa que la hoja esté compartida como “Cualquier persona con el enlace”.";
-      setBadge("● Sin conexión", "red");
+      if (e && e.message === "no-inventario") {
+        $("settingsMsg").textContent = "Hoja localizada, pero no encontré una pestaña llamada “INVENTARIO”. Asegúrate de que exista con ese nombre.";
+        setBadge("⚠ Sin pestaña INVENTARIO", "red");
+      } else if (e && e.message === "no-link") {
+        $("settingsMsg").textContent = "Pega primero el enlace de tu hoja.";
+        setBadge("Configura Sheets", "grey");
+      } else {
+        $("settingsMsg").textContent = "Sin conexión: revisa que la hoja esté compartida como “Cualquier persona con el enlace”.";
+        setBadge("● Sin conexión", "red");
+      }
     }
   });
 
