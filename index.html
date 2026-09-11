@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1565C0">
+  <title>Presupuestos</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="appbar">
+    <div class="appbar-inner">
+      <h1>📋 Presupuestos</h1>
+      <span id="statusBadge" class="badge grey">Verificando…</span>
+    </div>
+  </header>
+
+  <main>
+
+    <section id="view-home" class="view active">
+      <div id="companyCard" class="company-card"></div>
+
+      <div class="section-head">
+        <h2>Inventario</h2>
+        <button id="btnRefresh" class="icon-btn" title="Actualizar">↻</button>
+      </div>
+      <p id="homeHint" class="hint"></p>
+      <div id="productList" class="list"></div>
+    </section>
+
+    <section id="view-new" class="view">
+      <button class="back" data-goto="home">← Volver</button>
+      <h2>Nuevo presupuesto</h2>
+
+      <div class="field">
+        <label for="inputFolio">Folio</label>
+        <input id="inputFolio" type="text" autocomplete="off">
+      </div>
+
+      <div class="field">
+        <label for="inputClient">Cliente</label>
+        <input id="inputClient" type="text" autocomplete="name" placeholder="Nombre del cliente">
+      </div>
+
+      <h3>Agregar producto</h3>
+      <div class="pick">
+        <select id="selProduct"></select>
+        <input id="inputQty" type="number" min="1" step="any" value="1">
+        <button id="btnAddSelected" class="btn primary compact">＋</button>
+      </div>
+
+      <details class="manual-box">
+        <summary>O agregar manualmente</summary>
+        <div class="manual">
+          <input id="inputManualName" type="text" placeholder="Nombre del producto">
+          <input id="inputManualPrice" type="number" min="0" step="0.01" placeholder="Precio">
+          <input id="inputManualQty" type="number" min="1" step="any" value="1">
+          <button id="btnManualAdd" class="btn primary">Agregar manual</button>
+        </div>
+      </details>
+
+      <h3>Artículos <span id="itemsCount" class="count"></span></h3>
+      <div id="itemsWrap">
+        <table id="itemsTable">
+          <thead>
+            <tr><th>Producto</th><th>Cant</th><th>Precio</th><th>Subtotal</th><th></th></tr>
+          </thead>
+          <tbody id="itemsBody"></tbody>
+        </table>
+        <p class="empty" id="itemsEmpty">Aún no hay artículos.</p>
+      </div>
+
+      <div class="total">Total: <span id="totalAmount">$0.00</span></div>
+
+      <div class="field">
+        <label for="inputConditions">Condiciones de pago</label>
+        <textarea id="inputConditions" rows="2" placeholder="Ej. 50% anticipo, 50% a la entrega"></textarea>
+      </div>
+
+      <button id="btnWhatsApp" class="btn green">💬 Compartir por WhatsApp</button>
+      <button id="btnCopy" class="btn primary">📋 Copiar texto</button>
+      <button id="btnSaveBudget" class="btn outline">💾 Guardar en historial</button>
+    </section>
+
+    <section id="view-history" class="view">
+      <h2>Historial</h2>
+      <div id="historyList" class="list"></div>
+    </section>
+
+    <section id="view-settings" class="view">
+      <div class="settings-head">
+        <div class="avatar ghost">⚙</div>
+        <div>
+          <h2>Configuración</h2>
+          <p class="hint">Tus datos se guardan en este celular</p>
+        </div>
+      </div>
+
+      <h3>Datos de la empresa</h3>
+
+      <div class="field">
+        <label for="inputCompany">Nombre de la empresa</label>
+        <input id="inputCompany" type="text" placeholder="Mi Negocio">
+      </div>
+
+      <div class="field">
+        <label for="inputAddress">Dirección</label>
+        <input id="inputAddress" type="text" placeholder="Calle, colonia, ciudad">
+      </div>
+
+      <div class="field">
+        <label for="inputWhatsapp">WhatsApp</label>
+        <input id="inputWhatsapp" type="tel" placeholder="5215512345678">
+      </div>
+
+      <h3>Inventario (Google Sheets)</h3>
+
+      <div class="field">
+        <label for="inputSheets">Enlace de tu hoja de Google Sheets</label>
+        <input id="inputSheets" type="url" placeholder="https://docs.google.com/spreadsheets/d/…">
+      </div>
+
+      <button id="btnSaveSettings" class="btn primary">💾 Guardar todo</button>
+      <button id="btnCheck" class="btn outline">🔌 Verificar conexión</button>
+      <p id="settingsMsg" class="hint"></p>
+
+      <div class="note">
+        <strong>Para conectar tu hoja:</strong><br>
+        1. Primera pestaña: primera fila = encabezados<br>
+        2. Columnas: <em>Producto | Precio | Stock</em><br>
+        3. Compartir → “<strong>Cualquier persona con el enlace</strong>” (solo lectura)
+      </div>
+    </section>
+
+  </main>
+
+  <button id="btnNewBudget" class="fab" aria-label="Nuevo presupuesto">
+    <svg viewBox="0 0 24 24"><path d="M19,13h-6v6h-2v-6H5v-2h6V5h2v6h6V13z"/></svg>
+  </button>
+
+  <nav id="bottomNav">
+    <button class="active" data-goto="home">
+      <svg viewBox="0 0 24 24"><path d="M10,20v-6h4v6h5v-8h3L12,3L2,12h3v8H10z"/></svg>
+      <span>Inicio</span>
+    </button>
+    <button data-goto="history">
+      <svg viewBox="0 0 24 24"><path d="M4,10.5c-0.83,0 -1.5,0.67 -1.5,1.5s0.67,1.5 1.5,1.5s1.5,-0.67 1.5,-1.5S4.83,10.5 4,10.5zM4,4.5C3.17,4.5 2.5,5.17 2.5,6S3.17,7.5 4,7.5S5.5,6.83 5.5,6S4.83,4.5 4,4.5zM4,16.5c-0.83,0 -1.5,0.67 -1.5,1.5s0.67,1.5 1.5,1.5s1.5,-0.67 1.5,-1.5S4.83,16.5 4,16.5zM7,19h14v-2H7V19zM7,13h14v-2H7V13zM7,5v2h14V5H7z"/></svg>
+      <span>Historial</span>
+    </button>
+    <button data-goto="settings">
+      <svg viewBox="0 0 24 24"><path d="M19.43,12.98c0.04,-0.32 0.07,-0.64 0.07,-0.98s-0.03,-0.66 -0.07,-0.98l2.11,-1.65c0.19,-0.15 0.24,-0.42 0.12,-0.64l-2,-3.46c-0.12,-0.22 -0.37,-0.31 -0.6,-0.22l-2.49,1c-0.52,-0.4 -1.08,-0.73 -1.69,-0.98L14.5,2.42C14.47,2.18 14.25,2 14,2h-4c-0.25,0 -0.46,0.18 -0.5,0.42L9.05,5.08C8.43,5.34 7.88,5.66 7.35,6.06l-2.49,-1c-0.23,-0.09 -0.48,0 -0.6,0.22l-2,3.46c-0.13,0.22 -0.07,0.49 0.12,0.64l2.11,1.65c-0.04,0.32 -0.07,0.66 -0.07,0.98s0.03,0.66 0.07,0.98l-2.11,1.65c-0.19,0.15 -0.24,0.42 -0.12,0.64l2,3.46c0.12,0.22 0.37,0.31 0.6,0.22l2.49,-1c0.52,0.4 1.08,0.73 1.69,0.98l0.45,2.65c0.03,0.24 0.25,0.42 0.5,0.42h4c0.25,0 0.46,-0.18 0.5,-0.42l0.45,-2.65c0.61,-0.25 1.17,-0.58 1.69,-0.98l2.49,1c0.23,0.08 0.48,0 0.6,-0.22l2,-3.46c0.12,-0.22 0.07,-0.49 -0.12,-0.64L19.43,12.98zM12,15.5C10.07,15.5 8.5,13.93 8.5,12s1.57,-3.5 3.5,-3.5S15.5,10.07 15.5,12S13.93,15.5 12,15.5z"/></svg>
+      <span>Config</span>
+    </button>
+  </nav>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-title">Presupuesto</div>
+      <pre id="modalText"></pre>
+      <div class="modal-actions">
+        <button id="modalWhats" class="btn green compact">💬 WhatsApp</button>
+        <button id="modalCopy" class="btn primary compact">Copiar</button>
+        <button id="modalClose" class="btn outline compact">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
