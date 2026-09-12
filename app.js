@@ -581,9 +581,12 @@ function wireHistory(container) {
 
 function applyCompanyLock() {
   const locked = !!loadSettings().companyLocked;
-  $("inputCompany").disabled = locked;
-  $("inputAddress").disabled = locked;
-  $("inputLockCompany").checked = locked;
+  ["inputCompany", "inputAddress", "inputWhatsapp", "inputSheets"].forEach(id => {
+    const el = $(id);
+    if (el) el.disabled = locked;
+  });
+  const btn = $("btnUnlockCompany");
+  if (btn) btn.classList.toggle("hidden", !locked);
 }
 
 function init() {
@@ -595,7 +598,13 @@ function init() {
   $("inputCurrency").value = s.currency || "USD";
   applyCompanyLock();
 
-  $("inputLockCompany").addEventListener("change", () => applyCompanyLock());
+  const btnUnlock = $("btnUnlockCompany");
+  if (btnUnlock) {
+    btnUnlock.addEventListener("click", () => {
+      saveSettings({ ...loadSettings(), companyLocked: false });
+      applyCompanyLock();
+    });
+  }
 
   updateStatus();
   loadProducts();
@@ -643,25 +652,32 @@ function init() {
     }
   });
 
+  function pushToHistory(b) {
+  const entry = { id: Date.now(), date: Date.now(), text: buildBudget(b), ...b };
+  const h = loadHistory();
+  h.push(entry);
+  saveHistory(h);
+  if (typeof renderHistory === "function") renderHistory();
+}
+
   $("btnCopy").addEventListener("click", () => {
     const b = currentBudget();
     if (b.items.length === 0) { toast("Agrega al menos un artículo."); return; }
+    pushToHistory(b);
     copyText(buildBudget(b));
   });
 
   $("btnWhatsApp").addEventListener("click", () => {
     const b = currentBudget();
     if (b.items.length === 0) { toast("Agrega al menos un artículo."); return; }
+    pushToHistory(b);
     shareWhatsapp(buildBudget(b));
   });
 
   $("btnSaveBudget").addEventListener("click", () => {
     const b = currentBudget();
     if (b.items.length === 0) { toast("Agrega al menos un artículo."); return; }
-    const entry = { id: Date.now(), date: Date.now(), text: buildBudget(b), ...b };
-    const h = loadHistory();
-    h.push(entry);
-    saveHistory(h);
+    pushToHistory(b);
     toast("Guardado en historial ✓");
     $("inputClient").value = "";
     $("inputConditions").value = "";
@@ -671,20 +687,16 @@ function init() {
 
   $("btnSaveSettings").addEventListener("click", () => {
     const s = loadSettings();
-    const companyName = $("inputCompany").value.trim();
-    const address = $("inputAddress").value.trim();
     saveSettings({
       ...s,
-      companyName,
-      address,
+      companyName: $("inputCompany").value.trim(),
+      address: $("inputAddress").value.trim(),
       whatsapp: $("inputWhatsapp").value.trim(),
       sheetsLink: $("inputSheets").value.trim(),
-      currency: $("inputCurrency").value || "USD"
+      currency: $("inputCurrency").value || "USD",
+      companyLocked: true
     });
-    if (companyName && address) {
-      saveSettings({ ...loadSettings(), companyLocked: true });
-      applyCompanyLock();
-    }
+    applyCompanyLock();
     toast("Datos guardados ✓");
     updateStatus();
     renderCompanyCard();

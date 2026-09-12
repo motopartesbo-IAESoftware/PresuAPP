@@ -1,6 +1,6 @@
 {
-  "name": "Presupuestos",
-  "short_name": "Presupuest",
+  "name": "PresuApp",
+  "short_name": "PresuApp",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",
