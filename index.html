@@ -39,7 +39,7 @@
       <h2>Nuevo presupuesto</h2>
 
       <div class="field">
-        <label for="inputFolio">Folio</label>
+        <label for="inputFolio">Número</label>
         <input id="inputFolio" type="text" autocomplete="off">
       </div>
 
@@ -105,6 +105,14 @@
       <div class="field">
         <label for="inputAddress">Dirección</label>
         <input id="inputAddress" type="text" placeholder="Calle, colonia, ciudad">
+      </div>
+
+      <div class="field lock-field">
+        <label for="inputLockCompany">
+          <input type="checkbox" id="inputLockCompany">
+          🔒 Bloquear nombre y dirección (una vez guardados)
+        </label>
+        <p class="hint">Desmarcar para poder editarlos de nuevo</p>
       </div>
 
       <div class="field">

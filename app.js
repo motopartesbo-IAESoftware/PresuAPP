@@ -107,12 +107,21 @@ function extractSheetGid(url) {
   return m ? m[1] : null;
 }
 
+const FOLIO_KEY = "presupuestos.folioCounter";
+
+function folioCounter() {
+  try { return parseInt(localStorage.getItem(FOLIO_KEY) || "1", 10) || 1; }
+  catch (e) { return 1; }
+}
+
+function saveFolioCounter(n) {
+  try { localStorage.setItem(FOLIO_KEY, String(Math.max(1, n))); } catch (e) {}
+}
+
 function autoFolio() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `P-${y}${m}${day}-${Math.floor(100 + Math.random() * 900)}`;
+  const n = folioCounter();
+  saveFolioCounter(n + 1);
+  return "P-" + n;
 }
 
 function parseCSV(text) {
@@ -411,37 +420,51 @@ function updateTotal() {
   $("totalAmount").textContent = budgetMoney(total);
 }
 
+function wrapName(text) {
+  const words = String(text || "").trim().split(/\s+/).filter(Boolean);
+  const out = [];
+  let cur = "";
+  for (const w of words) {
+    if (w.length > 30) {
+      if (cur) { out.push(cur); cur = ""; }
+      out.push(w);
+    } else if (!cur) cur = w;
+    else if ((cur + " " + w).length <= 30) cur += " " + w;
+    else { out.push(cur); cur = w; }
+  }
+  if (cur) out.push(cur);
+  return out.slice(0, 2);
+}
+
 function buildBudget(entry) {
   const s = loadSettings();
   const dateStr = new Date().toLocaleDateString("es-MX");
   const cur = (entry && entry.currency) || baseCurrency();
+  const line30 = (ch) => ch + "─".repeat(29);
   const lines = [];
   if (s.companyName) {
-    lines.push("══════════════════════════════");
-    lines.push(s.companyName);
+    lines.push("*" + s.companyName + "*");
     if (s.address) lines.push(s.address);
-    if (s.whatsapp) lines.push("WhatsApp: " + s.whatsapp);
-    if (s.sheetsLink) lines.push("Catálogo: " + s.sheetsLink);
-    lines.push("══════════════════════════════");
+    lines.push("");
     lines.push("");
   }
-  lines.push("  PRESUPUESTO");
+  lines.push("*PRESUPUESTO*");
   lines.push("");
-  lines.push("Folio: " + entry.folio);
+  lines.push("");
+  lines.push("Numero: " + entry.folio);
   lines.push("Fecha: " + (entry.dateStr || dateStr));
   if (entry.client) lines.push("Cliente: " + entry.client);
   lines.push("");
-  lines.push("Precios en: " + (CURRENCIES[cur]?.label || "USD"));
-  lines.push("┌───────────────────────────────");
+  lines.push("");
   lines.push("  DESCRIPCIÓN           CANT   IMPORTE");
-  lines.push("├───────────────────────────────");
+  lines.push(line30("├"));
   (entry.items || []).forEach(i => {
-    lines.push("  " + i.name);
+    wrapName(i.name).forEach(ln => lines.push("  " + ln));
     lines.push(`  ${i.qty} x ${money(i.price, cur)} = ${money(i.qty * i.price, cur)}`);
+    lines.push(line30("├"));
   });
-  lines.push("├───────────────────────────────");
   lines.push("  TOTAL: " + money(entry.total, cur));
-  lines.push("└───────────────────────────────");
+  lines.push(line30("└"));
   lines.push("");
   if (entry.conditions) { lines.push("Condiciones de pago:"); lines.push(entry.conditions); lines.push(""); }
   if (s.whatsapp) lines.push("Pedidos al WhatsApp: " + s.whatsapp);
@@ -556,6 +579,13 @@ function wireHistory(container) {
   });
 }
 
+function applyCompanyLock() {
+  const locked = !!loadSettings().companyLocked;
+  $("inputCompany").disabled = locked;
+  $("inputAddress").disabled = locked;
+  $("inputLockCompany").checked = locked;
+}
+
 function init() {
   const s = loadSettings();
   $("inputCompany").value = s.companyName || "";
@@ -563,6 +593,9 @@ function init() {
   $("inputWhatsapp").value = s.whatsapp || "";
   $("inputSheets").value = s.sheetsLink || "";
   $("inputCurrency").value = s.currency || "USD";
+  applyCompanyLock();
+
+  $("inputLockCompany").addEventListener("change", () => applyCompanyLock());
 
   updateStatus();
   loadProducts();
@@ -639,14 +672,20 @@ function init() {
 
   $("btnSaveSettings").addEventListener("click", () => {
     const s = loadSettings();
+    const companyName = $("inputCompany").value.trim();
+    const address = $("inputAddress").value.trim();
     saveSettings({
       ...s,
-      companyName: $("inputCompany").value.trim(),
-      address: $("inputAddress").value.trim(),
+      companyName,
+      address,
       whatsapp: $("inputWhatsapp").value.trim(),
       sheetsLink: $("inputSheets").value.trim(),
       currency: $("inputCurrency").value || "USD"
     });
+    if (companyName && address) {
+      saveSettings({ ...loadSettings(), companyLocked: true });
+      applyCompanyLock();
+    }
     toast("Datos guardados ✓");
     updateStatus();
     renderCompanyCard();
