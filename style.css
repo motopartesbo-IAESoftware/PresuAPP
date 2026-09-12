@@ -282,18 +282,15 @@ h3 { font-size: 14.5px; font-weight: 700; margin: 20px 0 10px; color: var(--mute
   cursor: not-allowed;
   opacity: .85;
 }
-.unlock-btn {
-  border: 1.5px solid var(--line);
-  background: var(--surface);
-  color: var(--primary);
-  font-size: 12px;
-  font-weight: 700;
-  padding: 4px 12px;
+.hint.warn {
+  color: var(--red);
+  font-size: 12.5px;
+  background: rgba(211,47,47,.08);
+  border: 1px solid rgba(211,47,47,.3);
   border-radius: 10px;
-  cursor: pointer;
-  float: right;
+  padding: 9px 12px;
 }
-.unlock-btn.hidden { display: none; }
+.btn.red { background: var(--red); color: #fff; }
 
 table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 14px; overflow: hidden; margin-top: 6px; }
 th { background: #EDF1F7; text-align: left; font-size: 11.5px; padding: 9px 8px; color: var(--muted); }

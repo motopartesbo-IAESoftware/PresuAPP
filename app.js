@@ -420,6 +420,14 @@ function updateTotal() {
   $("totalAmount").textContent = budgetMoney(total);
 }
 
+function resetBudget() {
+  $("inputClient").value = "";
+  $("inputConditions").value = "";
+  budgetItems = [];
+  renderBudgetItems();
+  $("inputFolio").value = autoFolio();
+}
+
 function wrapName(text) {
   const words = String(text || "").trim().split(/\s+/).filter(Boolean);
   const out = [];
@@ -456,7 +464,8 @@ function buildBudget(entry) {
   if (entry.client) lines.push("Cliente: " + entry.client);
   lines.push("");
   lines.push("");
-  lines.push("  DESCRIPCIÓN           CANT   IMPORTE");
+  lines.push("  DESCRIPCIÓN");
+  lines.push("  CANT                 PRECIO");
   lines.push(lineDiv("├"));
   (entry.items || []).forEach(i => {
     wrapName(i.name).forEach(ln => lines.push("  " + ln));
@@ -585,8 +594,6 @@ function applyCompanyLock() {
     const el = $(id);
     if (el) el.disabled = locked;
   });
-  const btn = $("btnUnlockCompany");
-  if (btn) btn.classList.toggle("hidden", !locked);
 }
 
 function init() {
@@ -597,14 +604,6 @@ function init() {
   $("inputSheets").value = s.sheetsLink || "";
   $("inputCurrency").value = s.currency || "USD";
   applyCompanyLock();
-
-  const btnUnlock = $("btnUnlockCompany");
-  if (btnUnlock) {
-    btnUnlock.addEventListener("click", () => {
-      saveSettings({ ...loadSettings(), companyLocked: false });
-      applyCompanyLock();
-    });
-  }
 
   updateStatus();
   loadProducts();
@@ -679,10 +678,12 @@ function init() {
     if (b.items.length === 0) { toast("Agrega al menos un artículo."); return; }
     pushToHistory(b);
     toast("Guardado en historial ✓");
-    $("inputClient").value = "";
-    $("inputConditions").value = "";
-    budgetItems = [];
-    renderBudgetItems();
+    resetBudget();
+  });
+
+  $("btnClearBudget").addEventListener("click", () => {
+    resetBudget();
+    toast("Presupuesto en blanco.");
   });
 
   $("btnSaveSettings").addEventListener("click", () => {
