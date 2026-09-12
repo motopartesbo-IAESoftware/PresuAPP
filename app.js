@@ -422,7 +422,6 @@ function updateTotal() {
 
 function resetBudget() {
   $("inputClient").value = "";
-  $("inputConditions").value = "";
   budgetItems = [];
   renderBudgetItems();
   $("inputFolio").value = autoFolio();
@@ -475,7 +474,6 @@ function buildBudget(entry) {
   lines.push("  TOTAL: " + money(entry.total, cur));
   lines.push(lineDiv("└"));
   lines.push("");
-  if (entry.conditions) { lines.push("Condiciones de pago:"); lines.push(entry.conditions); lines.push(""); }
   if (s.whatsapp) lines.push("Pedidos al WhatsApp: " + s.whatsapp);
   lines.push("¡Gracias por su preferencia!");
   return lines.join("\n");
@@ -489,7 +487,6 @@ function currentBudget() {
   return {
     folio: $("inputFolio").value.trim() || autoFolio(),
     client: $("inputClient").value.trim(),
-    conditions: $("inputConditions").value.trim(),
     dateStr: new Date().toLocaleDateString("es-MX"),
     currency: budgetCurrency(),
     items,
@@ -664,6 +661,7 @@ function init() {
     if (b.items.length === 0) { toast("Agrega al menos un artículo."); return; }
     pushToHistory(b);
     copyText(buildBudget(b));
+    resetBudget();
   });
 
   $("btnWhatsApp").addEventListener("click", () => {
@@ -671,19 +669,7 @@ function init() {
     if (b.items.length === 0) { toast("Agrega al menos un artículo."); return; }
     pushToHistory(b);
     shareWhatsapp(buildBudget(b));
-  });
-
-  $("btnSaveBudget").addEventListener("click", () => {
-    const b = currentBudget();
-    if (b.items.length === 0) { toast("Agrega al menos un artículo."); return; }
-    pushToHistory(b);
-    toast("Guardado en historial ✓");
     resetBudget();
-  });
-
-  $("btnClearBudget").addEventListener("click", () => {
-    resetBudget();
-    toast("Presupuesto en blanco.");
   });
 
   $("btnSaveSettings").addEventListener("click", () => {
