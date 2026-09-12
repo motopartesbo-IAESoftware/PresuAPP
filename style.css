@@ -58,6 +58,10 @@ main {
   margin: 0 auto;
   padding: 18px 16px 8px;
 }
+.bottom-spacer {
+  height: 110px;
+  width: 100%;
+}
 
 .view { display: none; }
 .view.active { display: block; animation: fadeUp .28s ease; }
