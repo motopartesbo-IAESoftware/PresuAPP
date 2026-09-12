@@ -324,43 +324,24 @@ td { padding: 9px 8px; font-size: 13.5px; border-top: 1px solid var(--bg); verti
   line-height: 1.6;
 }
 
-.fab {
-  position: fixed;
-  z-index: 12;
-  bottom: calc(84px + env(safe-area-inset-bottom));
-  right: 20px;
-  width: 62px;
-  height: 62px;
-  border-radius: 50%;
-  border: none;
-  background: var(--primary);
-  color: #fff;
-  box-shadow: 0 6px 16px rgba(21,101,192,.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: transform .15s ease;
-}
-.fab svg { width: 30px; height: 30px; fill: #fff; }
-.fab:active { transform: scale(.9); }
-.fab-badge {
+.nav-badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  border-radius: 12px;
+  top: 2px;
+  right: calc(50% - 32px);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 10px;
   background: var(--red);
   color: #fff;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
-  line-height: 22px;
+  line-height: 18px;
   text-align: center;
-  box-shadow: 0 1px 4px rgba(0,0,0,.3);
+  box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  pointer-events: none;
 }
-.fab-badge.hidden { display: none; }
+.nav-badge.hidden { display: none; }
 
 #bottomNav {
   position: fixed;
@@ -374,6 +355,7 @@ td { padding: 9px 8px; font-size: 13.5px; border-top: 1px solid var(--bg); verti
   padding-bottom: env(safe-area-inset-bottom);
 }
 #bottomNav button {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;

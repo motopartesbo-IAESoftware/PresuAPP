@@ -425,11 +425,11 @@ function wrapName(text) {
   const out = [];
   let cur = "";
   for (const w of words) {
-    if (w.length > 30) {
+    if (w.length > 25) {
       if (cur) { out.push(cur); cur = ""; }
       out.push(w);
     } else if (!cur) cur = w;
-    else if ((cur + " " + w).length <= 30) cur += " " + w;
+    else if ((cur + " " + w).length <= 25) cur += " " + w;
     else { out.push(cur); cur = w; }
   }
   if (cur) out.push(cur);
@@ -440,7 +440,7 @@ function buildBudget(entry) {
   const s = loadSettings();
   const dateStr = new Date().toLocaleDateString("es-MX");
   const cur = (entry && entry.currency) || baseCurrency();
-  const line30 = (ch) => ch + "─".repeat(29);
+  const lineDiv = (ch) => ch + "─".repeat(20);
   const lines = [];
   if (s.companyName) {
     lines.push("*" + s.companyName + "*");
@@ -457,14 +457,14 @@ function buildBudget(entry) {
   lines.push("");
   lines.push("");
   lines.push("  DESCRIPCIÓN           CANT   IMPORTE");
-  lines.push(line30("├"));
+  lines.push(lineDiv("├"));
   (entry.items || []).forEach(i => {
     wrapName(i.name).forEach(ln => lines.push("  " + ln));
     lines.push(`  ${i.qty} x ${money(i.price, cur)} = ${money(i.qty * i.price, cur)}`);
-    lines.push(line30("├"));
+    lines.push(lineDiv("├"));
   });
   lines.push("  TOTAL: " + money(entry.total, cur));
-  lines.push(line30("└"));
+  lines.push(lineDiv("└"));
   lines.push("");
   if (entry.conditions) { lines.push("Condiciones de pago:"); lines.push(entry.conditions); lines.push(""); }
   if (s.whatsapp) lines.push("Pedidos al WhatsApp: " + s.whatsapp);
@@ -605,7 +605,6 @@ function init() {
     btn.addEventListener("click", () => showView(btn.dataset.goto));
   });
 
-  $("btnNewBudget").addEventListener("click", () => showView("new"));
   $("btnRefresh").addEventListener("click", loadProducts);
 
   $("inputSearch").addEventListener("input", (e) => {

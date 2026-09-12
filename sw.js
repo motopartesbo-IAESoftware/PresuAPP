@@ -1,4 +1,4 @@
-const CACHE = "presupuestos-v3";
+const CACHE = "presupuestos-v4";
 const ASSETS = ["./", "./index.html", "./style.css", "./app.js", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", (e) => {
